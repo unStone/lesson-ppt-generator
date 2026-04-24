@@ -1,22 +1,28 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
+import { BookOpen, Trophy, Star, Award, Play, MessageSquare, Settings, UploadCloud, FileText } from 'lucide-react'
+import type { LessonType } from '../types'
+import { LESSON_TYPE_OPTIONS } from '../types'
 
-interface UploadViewProps {
-  onComplete: (parsedData: unknown) => void
+const ICON_MAP: Record<string, React.ElementType> = {
+  BookOpen,
+  Trophy,
+  Star,
+  Award,
+  Play,
+  MessageSquare,
 }
 
-function UploadView({ onComplete }: UploadViewProps) {
+interface UploadViewProps {
+  onComplete: (fileName: string, fileContent: string, lessonType: LessonType) => void
+  onOpenSettings: () => void
+}
+
+function UploadView({ onComplete, onOpenSettings }: UploadViewProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [fileName, setFileName] = useState('')
-  const [lessonType, setLessonType] = useState('daily')
-
-  const lessonTypes = [
-    { value: 'daily', label: '日常课', desc: '简洁实用，重点突出' },
-    { value: 'open', label: '公开课', desc: '精美完整，互动丰富' },
-    { value: 'demo', label: '示范课', desc: '规范标准，逻辑严密' },
-    { value: 'research', label: '教研课', desc: '问题导向，深度思考' },
-    { value: 'competition', label: '比赛课', desc: '创意独特，视觉震撼' },
-    { value: 'micro', label: '微课', desc: '聚焦核心，精炼高效' },
-  ]
+  const [fileContent, setFileContent] = useState('')
+  const [lessonType, setLessonType] = useState<LessonType>('daily')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -27,98 +33,150 @@ function UploadView({ onComplete }: UploadViewProps) {
     setIsDragging(false)
   }, [])
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const readFile = async (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onload = (e) => resolve(String(e.target?.result || ''))
+      reader.readAsText(file)
+    })
+  }
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
     const file = e.dataTransfer.files[0]
     if (file) {
       setFileName(file.name)
-      // TODO: read file content
+      const content = await readFile(file)
+      setFileContent(content)
     }
   }, [])
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
       setFileName(file.name)
-      // TODO: read file content
+      const content = await readFile(file)
+      setFileContent(content)
     }
   }, [])
 
   const handleStart = () => {
-    // TODO: call electronAPI.parseLessonPlan()
-    onComplete({})
+    if (fileName && fileContent) {
+      onComplete(fileName, fileContent, lessonType)
+    }
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="bg-white rounded-xl shadow-sm border p-8">
-        <h2 className="text-xl font-semibold mb-6">上传教案</h2>
-
-        {/* Drag & Drop Area */}
-        <div
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors ${
-            isDragging
-              ? 'border-blue-400 bg-blue-50'
-              : 'border-gray-300 hover:border-gray-400'
-          }`}
-        >
-          <div className="text-4xl mb-4">📄</div>
-          <p className="text-gray-600 mb-2">
-            拖拽教案文件到此处，或
-            <label className="text-blue-600 cursor-pointer hover:underline">
-              点击上传
-              <input
-                type="file"
-                accept=".docx,.doc,.txt"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
-            </label>
-          </p>
-          <p className="text-sm text-gray-400">支持 Word (.docx/.doc) 和 文本 (.txt) 格式</p>
-          {fileName && (
-            <p className="mt-3 text-sm text-green-600">✅ 已选择: {fileName}</p>
-          )}
-        </div>
-
-        {/* Lesson Type Selection */}
-        <div className="mt-8">
-          <h3 className="text-sm font-medium text-gray-700 mb-3">选择课型</h3>
-          <div className="grid grid-cols-3 gap-3">
-            {lessonTypes.map((type) => (
-              <button
-                key={type.value}
-                onClick={() => setLessonType(type.value)}
-                className={`p-3 rounded-lg border text-left transition-all ${
-                  lessonType === type.value
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="font-medium">{type.label}</div>
-                <div className="text-xs text-gray-500 mt-1">{type.desc}</div>
-              </button>
-            ))}
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <header className="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-8 h-8 bg-primary rounded-lg">
+            <FileText className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-base font-semibold text-title">Lesson PPT Generator</span>
+            <span className="px-2 py-0.5 text-xs text-primary bg-primary-light rounded-full">v1.0.0</span>
           </div>
         </div>
-
-        {/* Start Button */}
         <button
-          onClick={handleStart}
-          disabled={!fileName}
-          className={`mt-8 w-full py-3 rounded-lg font-medium transition-colors ${
-            fileName
-              ? 'bg-blue-600 text-white hover:bg-blue-700'
-              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-          }`}
+          onClick={onOpenSettings}
+          className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
         >
-          开始解析教案
+          <Settings className="w-5 h-5" />
         </button>
-      </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 flex items-center justify-center p-6">
+        <div className="w-full max-w-xl">
+          {/* Upload Area */}
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={`relative flex flex-col items-center justify-center py-14 px-8 rounded-card border-2 border-dashed cursor-pointer transition-all ${
+              isDragging
+                ? 'border-primary bg-primary-light/50'
+                : 'border-gray-300 bg-white hover:border-primary/60 hover:bg-gray-50/50'
+            }`}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".docx,.doc,.txt"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            <div className="flex items-center justify-center w-16 h-16 mb-4 rounded-2xl bg-primary-light">
+              <UploadCloud className="w-8 h-8 text-primary" />
+            </div>
+            <p className="text-base text-body mb-1">
+              拖拽文件到这里，或<span className="text-primary font-medium">点击上传</span>
+            </p>
+            <p className="text-caption text-gray-400">
+              支持 Word (.docx) / TXT 文件，大小不超过 20MB
+            </p>
+            {fileName && (
+              <div className="mt-4 flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-lg text-sm">
+                <FileText className="w-4 h-4" />
+                <span>{fileName}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Lesson Type Selection */}
+          <div className="mt-6">
+            <h3 className="text-sm font-medium text-title mb-3">选择课型</h3>
+            <div className="grid grid-cols-3 gap-3">
+              {LESSON_TYPE_OPTIONS.map((type) => {
+                const Icon = ICON_MAP[type.icon]
+                const isSelected = lessonType === type.value
+                return (
+                  <button
+                    key={type.value}
+                    onClick={() => setLessonType(type.value)}
+                    className={`flex flex-col items-center p-4 rounded-card border text-center transition-all ${
+                      isSelected
+                        ? 'border-primary bg-primary-light shadow-card'
+                        : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-card-hover'
+                    }`}
+                  >
+                    <div className={`flex items-center justify-center w-10 h-10 mb-2 rounded-lg ${
+                      isSelected ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500'
+                    }`}>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <span className={`text-sm font-medium ${isSelected ? 'text-primary' : 'text-title'}`}>
+                      {type.label}
+                    </span>
+                    <span className="text-xs text-caption mt-0.5">{type.desc}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Start Button */}
+          <div className="mt-6">
+            <button
+              onClick={handleStart}
+              disabled={!fileName}
+              className="w-full btn-primary py-3.5 text-base"
+            >
+              开始解析
+              <svg className="w-4 h-4 ml-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </button>
+            <p className="mt-2 text-center text-xs text-caption">
+              上传后即可开始 AI 解析教案内容
+            </p>
+          </div>
+        </div>
+      </main>
     </div>
   )
 }

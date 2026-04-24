@@ -1,7 +1,6 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import icon from '../../resources/icon.png?asset'
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -9,7 +8,6 @@ function createWindow(): void {
     height: 900,
     show: false,
     autoHideMenuBar: true,
-    ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
@@ -42,17 +40,17 @@ app.whenReady().then(() => {
   })
 
   // IPC handlers
-  ipcMain.handle('parse-lesson-plan', async (_, content: string) => {
+  ipcMain.handle('parse-lesson-plan', async (_, _content: string) => {
     // TODO: Call Python parser agent
     return { success: true, data: {} }
   })
 
-  ipcMain.handle('generate-overview', async (_, data: unknown) => {
+  ipcMain.handle('generate-overview', async (_, _data: unknown) => {
     // TODO: Call LLM for overview generation
     return { success: true, data: {} }
   })
 
-  ipcMain.handle('generate-ppt', async (_, slides: unknown[]) => {
+  ipcMain.handle('generate-ppt', async (_, _slides: unknown[]) => {
     // TODO: Call Python PPT builder
     return { success: true, filePath: '' }
   })
