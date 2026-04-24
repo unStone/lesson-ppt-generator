@@ -1,0 +1,6 @@
+python-pptx==0.6.23
+python-docx==0.8.11
+matplotlib==3.8.2
+pillow==10.1.0
+openai==1.6.0
+httpx==0.25.2
